@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>デジカ・多条件コンボシミュレーター</title>
+    <style>
+        :root { --main-blue: #1565c0; --sec-red: #d32f2f; }
+        body { font-family: sans-serif; background: #eef2f7; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .layout { display: flex; gap: 30px; flex-wrap: wrap; }
+        .editor, .viewer { flex: 1; min-width: 320px; }
+        textarea { width: 100%; height: 200px; padding: 10px; border: 2px solid #ddd; border-radius: 10px; box-sizing: border-box; }
+        .card-area { display: flex; gap: 8px; margin: 15px 0; min-height: 100px; flex-wrap: wrap; background: #f8f9fa; padding: 10px; border-radius: 10px; }
+        .card { width: 80px; height: 110px; border: 2px solid var(--main-blue); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; text-align: center; background: white; }
+        .sim-panel { background: #fffde7; padding: 20px; border-radius: 12px; border: 2px solid #ffe082; }
+        .prob-value { font-size: 32px; color: var(--sec-red); font-weight: bold; }
+        .group-input { background: white; border: 1px solid #ccc; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-family: monospace; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>デジカ・多条件シミュレーター</h1>
+    
+    <div class="layout">
+        <div class="editor">
+            <h3>🗂 デッキレシピ</h3>
+            <textarea id="deckInput" onchange="save()">アグモン 4
+ガブモン 4
+グレイモン 4
+ガルルモン 4
+太一 4
+ヤマト 4
+その他 26</textarea>
+            
+            <h3 style="margin-top:20px;">🎯 判定グループ設定</h3>
+            <p style="font-size:11px; color:#666;">1行に1グループ。「,」区切りでその中のどれかがあればOK。</p>
+            <textarea id="groupInput" class="group-input" placeholder="例：&#10;アグモン, ガブモン&#10;グレイモン, ガルルモン&#10;太一, ヤマト">アグモン, ガブモン
+グレイモン, ガルルモン
+太一, ヤマト</textarea>
+            <button onclick="saveAndUpdate()" style="background:var(--main-blue); color:white; width:100%; padding:10px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">設定を保存して更新</button>
+        </div>
+
+        <div class="viewer">
+            <h3>🃏 1人回しテスト</h3>
+            <button onclick="drawHand()" style="background:#4caf50; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">ドロー</button>
+            <div id="hand-display" class="card-area"></div>
+
+            <div class="sim-panel">
+                <h3>📊 1万回試行（全グループ成立）</h3>
+                <button onclick="simulateMulti()" style="background: #ff9800; color:white; width:100%; font-weight:bold; padding:15px; border-radius:8px; border:none; cursor:pointer;">シミュレーション開始</button>
+                <div id="sim-result" style="text-align:center; margin-top:15px; line-height:1.6;">
+                    上記グループが**すべて**揃う確率を出します
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentDeck = [];
+
+    window.onload = function() {
+        document.getElementById("deckInput").value = localStorage.getItem('dc_deck') || document.getElementById("deckInput").value;
+        document.getElementById("groupInput").value = localStorage.getItem('dc_groups') || document.getElementById("groupInput").value;
+        updateDeck();
+    };
+
+    function saveAndUpdate() {
+        localStorage.setItem('dc_deck', document.getElementById("deckInput").value);
+        localStorage.setItem('dc_groups', document.getElementById("groupInput").value);
+        updateDeck();
+        alert("保存しました！");
+    }
+
+    function updateDeck() {
+        const text = document.getElementById("deckInput").value;
+        let newDeck = [];
+        text.split('\n').forEach(line => {
+            const parts = line.trim().split(/\s+/);
+            if (parts.length >= 2) {
+                const count = parseInt(parts.pop());
+                const name = parts.join(' ');
+                if (!isNaN(count)) for (let i = 0; i < count; i++) newDeck.push(name);
+            }
+        });
+        while (newDeck.length < 50) newDeck.push("（空）");
+        currentDeck = newDeck.slice(0, 50);
+    }
+
+    function shuffle(array) {
+        let arr = [...array];
+        for (let i = arr.length - 1; i > 0; i--) {
+            let j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    function drawHand() {
+        const hand = shuffle(currentDeck).slice(5, 10);
+        const container = document.getElementById("hand-display");
+        container.innerHTML = "";
+        hand.forEach(name => {
+            const div = document.createElement("div");
+            div.className = "card";
+            div.textContent = name;
+            container.appendChild(div);
+        });
+    }
+
+    function simulateMulti() {
+        // グループ設定を読み込み：2次元配列にする [[A,B], [C,D], [E]]
+        const groups = document.getElementById("groupInput").value.split('\n')
+                        .map(line => line.split(',').map(s => s.trim()).filter(s => s))
+                        .filter(g => g.length > 0);
+        
+        let success = 0;
+        const trials = 10000;
+
+        for (let i = 0; i < trials; i++) {
+            let deck = shuffle(currentDeck);
+            let hand = deck.slice(5, 10);
+
+            // 全グループがそれぞれ少なくとも1枚ヒットするかチェック
+            const check = (h) => groups.every(group => h.some(card => group.includes(card)));
+
+            if (!check(hand)) {
+                deck = shuffle(currentDeck);
+                hand = deck.slice(5, 10);
+            }
+
+            if (check(hand)) success++;
+        }
+
+        const prob = (success / trials * 100).toFixed(2);
+        document.getElementById("sim-result").innerHTML = `
+            全グループ成立（マリガン込）:<br>
+            <span class="prob-value">${prob}%</span>
+            <small>${groups.length}つの条件をすべて満たした確率です</small>
+        `;
+    }
+</script>
+</body>
+</html>
