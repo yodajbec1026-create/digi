@@ -2,55 +2,63 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>デジカ・多条件コンボシミュレーター</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>デジカ・マリガンシミュレーター</title>
     <style>
-        :root { --main-blue: #1565c0; --sec-red: #d32f2f; }
-        body { font-family: sans-serif; background: #eef2f7; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .layout { display: flex; gap: 30px; flex-wrap: wrap; }
-        .editor, .viewer { flex: 1; min-width: 320px; }
-        textarea { width: 100%; height: 200px; padding: 10px; border: 2px solid #ddd; border-radius: 10px; box-sizing: border-box; }
-        .card-area { display: flex; gap: 8px; margin: 15px 0; min-height: 100px; flex-wrap: wrap; background: #f8f9fa; padding: 10px; border-radius: 10px; }
-        .card { width: 80px; height: 110px; border: 2px solid var(--main-blue); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; text-align: center; background: white; }
-        .sim-panel { background: #fffde7; padding: 20px; border-radius: 12px; border: 2px solid #ffe082; }
-        .prob-value { font-size: 32px; color: var(--sec-red); font-weight: bold; }
-        .group-input { background: white; border: 1px solid #ccc; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-family: monospace; }
+        :root { --main-blue: #1565c0; --sec-red: #d32f2f; --draw-green: #4caf50; }
+        body { font-family: sans-serif; background: #eef2f7; padding: 10px; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .layout { display: flex; gap: 20px; flex-wrap: wrap; }
+        .editor, .viewer { flex: 1; min-width: 300px; }
+        textarea { width: 100%; height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        .card-area { display: flex; gap: 6px; margin: 10px 0; min-height: 110px; flex-wrap: wrap; justify-content: center; background: #f0f0f0; padding: 10px; border-radius: 8px; }
+        .card { width: 75px; height: 105px; border: 2px solid var(--main-blue); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; text-align: center; background: white; box-sizing: border-box; overflow: hidden; }
+        
+        /* モード切替スイッチ風 */
+        .mode-selector { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
+        .mode-btn { flex: 1; padding: 10px; border: 2px solid #ccc; border-radius: 8px; cursor: pointer; font-weight: bold; background: white; }
+        .mode-btn.active { border-color: var(--main-blue); background: #e3f2fd; color: var(--main-blue); }
+        
+        button { padding: 12px; cursor: pointer; border-radius: 8px; border: none; font-weight: bold; transition: 0.2s; margin-top: 5px; }
+        .btn-draw { background: var(--draw-green); color: white; width: 100%; }
+        .btn-sim { background: #ff9800; color: white; width: 100%; }
+        .result-box { background: #fffde7; padding: 15px; border-radius: 10px; border: 1px solid #ffe082; margin-top: 15px; text-align: center; }
+        .prob { font-size: 28px; color: var(--sec-red); font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>デジカ・多条件シミュレーター</h1>
+    <h2 style="text-align:center; color:var(--main-blue);">デジカ・先行後攻シミュレーター</h2>
     
     <div class="layout">
         <div class="editor">
-            <h3>🗂 デッキレシピ</h3>
-            <textarea id="deckInput" onchange="save()">アグモン 4
-ガブモン 4
+            <textarea id="deckInput" onchange="saveAndUpdate()">アグモン 4
 グレイモン 4
-ガルルモン 4
-太一 4
-ヤマト 4
-その他 26</textarea>
+メタルグレイモン 4
+ウォーグレイモン 2
+八神太一 4
+その他 32</textarea>
+            <button onclick="saveAndUpdate()" style="background:#ddd; width:100%;">デッキ保存・更新</button>
             
-            <h3 style="margin-top:20px;">🎯 判定グループ設定</h3>
-            <p style="font-size:11px; color:#666;">1行に1グループ。「,」区切りでその中のどれかがあればOK。</p>
-            <textarea id="groupInput" class="group-input" placeholder="例：&#10;アグモン, ガブモン&#10;グレイモン, ガルルモン&#10;太一, ヤマト">アグモン, ガブモン
-グレイモン, ガルルモン
-太一, ヤマト</textarea>
-            <button onclick="saveAndUpdate()" style="background:var(--main-blue); color:white; width:100%; padding:10px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">設定を保存して更新</button>
+            <h4 style="margin-bottom:5px;">🎯 判定グループ</h4>
+            <textarea id="groupInput" style="height:80px;">アグモン
+グレイモン</textarea>
         </div>
 
         <div class="viewer">
-            <h3>🃏 1人回しテスト</h3>
-            <button onclick="drawHand()" style="background:#4caf50; color:white; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">ドロー</button>
+            <div class="mode-selector">
+                <button id="p1-btn" class="mode-btn active" onclick="setMode(5, 'p1-btn')">先行 (5枚)</button>
+                <button id="p2-btn" class="mode-btn" onclick="setMode(6, 'p2-btn')">後攻 (6枚)</button>
+            </div>
+            
+            <button class="btn-draw" onclick="drawHand()">シャッフルして引く</button>
             <div id="hand-display" class="card-area"></div>
 
-            <div class="sim-panel">
-                <h3>📊 1万回試行（全グループ成立）</h3>
-                <button onclick="simulateMulti()" style="background: #ff9800; color:white; width:100%; font-weight:bold; padding:15px; border-radius:8px; border:none; cursor:pointer;">シミュレーション開始</button>
-                <div id="sim-result" style="text-align:center; margin-top:15px; line-height:1.6;">
-                    上記グループが**すべて**揃う確率を出します
+            <div class="result-box">
+                <button class="btn-sim" onclick="simulate()">1万回試行（マリガン込）</button>
+                <div id="sim-result" style="margin-top:10px;">
+                    現在のモードで確率を算出します
                 </div>
             </div>
         </div>
@@ -59,29 +67,37 @@
 
 <script>
     let currentDeck = [];
+    let drawCount = 5; // デフォルトは先行5枚
 
     window.onload = function() {
-        document.getElementById("deckInput").value = localStorage.getItem('dc_deck') || document.getElementById("deckInput").value;
-        document.getElementById("groupInput").value = localStorage.getItem('dc_groups') || document.getElementById("groupInput").value;
+        document.getElementById("deckInput").value = localStorage.getItem('dc_deck_v4') || document.getElementById("deckInput").value;
+        document.getElementById("groupInput").value = localStorage.getItem('dc_group_v4') || document.getElementById("groupInput").value;
         updateDeck();
     };
 
+    function setMode(count, btnId) {
+        drawCount = count;
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(btnId).classList.add('active');
+        drawHand(); // モードを変えたら自動で引き直す
+    }
+
     function saveAndUpdate() {
-        localStorage.setItem('dc_deck', document.getElementById("deckInput").value);
-        localStorage.setItem('dc_groups', document.getElementById("groupInput").value);
+        localStorage.setItem('dc_deck_v4', document.getElementById("deckInput").value);
+        localStorage.setItem('dc_group_v4', document.getElementById("groupInput").value);
         updateDeck();
-        alert("保存しました！");
     }
 
     function updateDeck() {
         const text = document.getElementById("deckInput").value;
         let newDeck = [];
         text.split('\n').forEach(line => {
-            const parts = line.trim().split(/\s+/);
-            if (parts.length >= 2) {
-                const count = parseInt(parts.pop());
-                const name = parts.join(' ');
-                if (!isNaN(count)) for (let i = 0; i < count; i++) newDeck.push(name);
+            const match = line.trim().match(/^(.*?)\s+(\d+)$/);
+            if (match) {
+                const count = parseInt(match[2]);
+                for (let i = 0; i < count; i++) newDeck.push(match[1].trim());
+            } else if(line.trim()) {
+                newDeck.push(line.trim());
             }
         });
         while (newDeck.length < 50) newDeck.push("（空）");
@@ -98,7 +114,8 @@
     }
 
     function drawHand() {
-        const hand = shuffle(currentDeck).slice(5, 10);
+        const deck = shuffle(currentDeck);
+        const hand = deck.slice(5, 5 + drawCount);
         const container = document.getElementById("hand-display");
         container.innerHTML = "";
         hand.forEach(name => {
@@ -109,36 +126,27 @@
         });
     }
 
-    function simulateMulti() {
-        // グループ設定を読み込み：2次元配列にする [[A,B], [C,D], [E]]
+    function simulate() {
         const groups = document.getElementById("groupInput").value.split('\n')
                         .map(line => line.split(',').map(s => s.trim()).filter(s => s))
                         .filter(g => g.length > 0);
-        
         let success = 0;
         const trials = 10000;
 
         for (let i = 0; i < trials; i++) {
+            const check = (h) => groups.every(g => h.some(c => g.includes(c)));
+            
             let deck = shuffle(currentDeck);
-            let hand = deck.slice(5, 10);
-
-            // 全グループがそれぞれ少なくとも1枚ヒットするかチェック
-            const check = (h) => groups.every(group => h.some(card => group.includes(card)));
-
-            if (!check(hand)) {
+            let hand = deck.slice(5, 5 + drawCount);
+            
+            if (!check(hand)) { // マリガン
                 deck = shuffle(currentDeck);
-                hand = deck.slice(5, 10);
+                hand = deck.slice(5, 5 + drawCount);
             }
-
             if (check(hand)) success++;
         }
-
         const prob = (success / trials * 100).toFixed(2);
-        document.getElementById("sim-result").innerHTML = `
-            全グループ成立（マリガン込）:<br>
-            <span class="prob-value">${prob}%</span>
-            <small>${groups.length}つの条件をすべて満たした確率です</small>
-        `;
+        document.getElementById("sim-result").innerHTML = `成功率: <span class="prob">${prob}%</span><br><small>${drawCount}枚ドロー設定</small>`;
     }
 </script>
 </body>
